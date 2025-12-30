@@ -14,50 +14,64 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
-export function AddProductDialog() {
-  const [open, setOpen] = useState(false);
+interface AddProductDialogProps {
+  onProductAdded: () => void;
+}
 
-  const [title, setTitle] = useState("dd");
+export function AddProductDialog({ onProductAdded }: AddProductDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("45");
-  const [imageUrl, setImageUrl] = useState(
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRD..."
-  );
+  const [price, setPrice] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [aiEnabled, setAiEnabled] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    await fetch("http://localhost:8080/products", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        description,
-        price: Number(price),
-        imageUrl,
-      }),
-    });
+    if (!title || !price || !imageUrl) {
+      alert("Please fill in title, price, and image URL");
+      return;
+    }
 
-    console.log({ title, description, price, imageUrl });
-    setOpen(false);
+    try {
+      const res = await fetch("http://localhost:8080/create-products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description,
+          price: Number(price),
+          imageUrl,
+          aiEnabled,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create product");
+
+      setOpen(false);
+      setTitle("");
+      setDescription("");
+      setPrice("");
+      setImageUrl("");
+      setAiEnabled(false);
+
+      onProductAdded(); // Refresh product list
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to add product");
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Open Add Product</Button>
+        <Button size="lg">Add New Product</Button>
       </DialogTrigger>
-
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl">
-            Add Product
-          </DialogTitle>
+          <DialogTitle className="text-center text-2xl">Add Product</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
           <div className="grid gap-2">
             <Label htmlFor="title">Title</Label>
@@ -66,6 +80,7 @@ export function AddProductDialog() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter product title"
+              required
             />
           </div>
 
@@ -96,6 +111,7 @@ export function AddProductDialog() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="0.00"
+              required
             />
           </div>
 
@@ -106,16 +122,12 @@ export function AddProductDialog() {
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://example.com/image.jpg"
+              required
             />
           </div>
 
           <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700"
-            >
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="submit">Add Product</Button>
